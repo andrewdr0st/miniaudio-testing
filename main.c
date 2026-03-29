@@ -1,22 +1,39 @@
 #include "miniaudio.h"
 #include <stdio.h>
 
-int main()
-{
-    ma_result result;
-    ma_engine engine;
+int count;
+float current;
 
-    result = ma_engine_init(NULL, &engine);
-    if (result != MA_SUCCESS) {
+void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
+    float* outBuffer = (float*) pOutput;
+    for (int i = 0; i < frameCount; i++) {
+        int bufferIdx = i * 2;
+        outBuffer[bufferIdx] = current;
+        outBuffer[bufferIdx + 1] = current;
+        count++;
+        if (count > 120) {
+            count = 0;
+            current *= -1.0f;
+        }
+    }
+}
+
+int main() {
+    ma_device_config config = ma_device_config_init(ma_device_type_playback);
+    config.playback.format = ma_format_f32;
+    config.playback.channels = 2;
+    config.sampleRate = 48000;
+    config.dataCallback = data_callback;
+    count = 0;
+    current = 0.15f;
+
+    ma_device device;
+    if (ma_device_init(NULL, &config, &device) != MA_SUCCESS) {
         return -1;
     }
 
-    ma_engine_play_sound(&engine, "sound.wav", NULL);
-
-    printf("Press Enter to quit...");
+    ma_device_start(&device);
     getchar();
-
-    ma_engine_uninit(&engine);
-
+    ma_device_uninit(&device);
     return 0;
 }
