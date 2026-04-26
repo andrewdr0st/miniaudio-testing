@@ -1,16 +1,12 @@
 #include "miniaudio.h"
 #include "envelope.h"
+#include "waveform.h"
 #include "math_utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 
 #define SAMPLE_RATE 48000
-#define ONE_OVER_127 0.007874f
-
-typedef struct {
-    int8_t samples[16];
-} waveform_16;
 
 waveform_16* wf;
 asdr_env env;
@@ -25,12 +21,7 @@ void dataCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint
     float* outBuffer = (float*) pOutput;
     ma_uint32 i_max = frameCount * 2;
     for (int i = 0; i < i_max; i += 2) {
-        float idx = s * 16;
-        int trunc = (int) idx;
-        float w0 = wf->samples[trunc] * ONE_OVER_127;
-        float w1 = wf->samples[(trunc + 1) % 16] * ONE_OVER_127;
-        float dec = idx - trunc;
-        float val = LERP(w0, w1, dec);
+        float val = sampleWaveform16(wf, s);
         val *= sampleASDREnvelope(env, timestamp, 1.6f);
         val *= volume;
         outBuffer[i] = val;
@@ -41,14 +32,6 @@ void dataCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint
         }
         timestamp += seconds_per_frame;
     }
-}
-
-waveform_16* createWaveform() {
-    waveform_16* w = malloc(sizeof(waveform_16));
-    for (int i = 0; i < 16; i++) {
-        w->samples[i] = 127 - (16 * i);
-    }
-    return w;
 }
 
 int main() {
@@ -66,7 +49,7 @@ int main() {
     env.decay = 0.25;
     env.sustain = 0.4;
     env.release = 0.4;
-    wf = createWaveform();
+    wf = createSquareWave();
 
     ma_device device;
     if (ma_device_init(NULL, &config, &device) != MA_SUCCESS) {
