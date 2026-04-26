@@ -5,7 +5,7 @@
 float sampleWaveform16(waveform_16* wf, float time) {
     float index = time * 16;
     int trunc = (int) index;
-    float w0 = wf->samples[trunc] * ONE_OVER_127;
+    float w0 = wf->samples[trunc % 16] * ONE_OVER_127;
     float w1 = wf->samples[(trunc + 1) % 16] * ONE_OVER_127;
     float dec = index - trunc;
     return LERP(w0, w1, dec);

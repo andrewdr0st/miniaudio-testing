@@ -8,6 +8,7 @@ typedef struct {
     float release;
 } asdr_env;
 
-float sampleASDREnvelope(asdr_env env, float time, float end_time);
+asdr_env* createASDREnvelope(float attack, float decay, float sustain, float release);
+float sampleASDREnvelope(asdr_env* env, float time, float end_time);
 
 #endif
