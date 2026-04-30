@@ -21,16 +21,23 @@ void dataCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint
     float* outBuffer = (float*) pOutput;
     ma_uint32 i_max = frameCount * 2;
     for (int i = 0; i < i_max; i += 2) {
-        float val = sampleWaveform16(inst->wf, s);
-        val *= sampleASDREnvelope(inst->env, timestamp, 1.0f);
+        float val = 0.0f;
+        for (int j = 0; j < 2; j++) {
+            note* n = &inst->notes[j];
+            if (n->current_time > 0.0f) {
+                float v = sampleWaveform16(inst->wf, n->wf_index);
+                v *= sampleASDREnvelope(inst->env, n->current_time, n->end_time);
+                val += v;
+                n->wf_index += n->periods_per_sample;
+                if (n->wf_index >= 1.0f) {
+                    n->wf_index -= 1.0f;
+                }
+            }
+            n->current_time += seconds_per_frame;
+        }
         val *= master_volume;
         outBuffer[i] = val * inst->pan_l;
         outBuffer[i + 1] = val * inst->pan_r;
-        s += periods_per_sample;
-        if (s >= 1.0f) {
-            s -= 1.0f;
-        }
-        timestamp += seconds_per_frame;
     }
 }
 
@@ -40,17 +47,24 @@ int main() {
     config.playback.channels = 2;
     config.sampleRate = SAMPLE_RATE;
     config.dataCallback = dataCallback;
+    
     seconds_per_frame = 1.0f / SAMPLE_RATE;
-    timestamp = 0;
-    freq = 440.0f;
-    periods_per_sample = freq / SAMPLE_RATE;
-    s = 0.0f;
 
     inst = malloc(sizeof(instrument));
     inst->env = createASDREnvelope(0.05f, 0.1f, 0.2f, 0.1f);
     inst->wf = createSquareWave();
     inst->pan_l = 0.5f;
     inst->pan_r = 0.5f;
+
+    inst->notes[0].periods_per_sample = 440.0f / SAMPLE_RATE;
+    inst->notes[0].wf_index = 0.0f;
+    inst->notes[0].current_time = -0.5f;
+    inst->notes[0].end_time = 1.6f;
+
+    inst->notes[1].periods_per_sample = 498.0f / SAMPLE_RATE;
+    inst->notes[1].wf_index = 0.0f;
+    inst->notes[1].current_time = -1.0f;
+    inst->notes[1].end_time = 0.8f;
 
     ma_device device;
     if (ma_device_init(NULL, &config, &device) != MA_SUCCESS) {
