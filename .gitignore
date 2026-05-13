@@ -1,4 +1,5 @@
 *.wav
 *.o
 *.exe
+*.mid
 audio_test

@@ -3,6 +3,7 @@
 #include "waveform.h"
 #include "instrument.h"
 #include "math_utils.h"
+#include "midi_reader.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -42,6 +43,10 @@ void dataCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint
 }
 
 int main() {
+    parseMidiFile("midi/megalo.mid");
+
+    return 0;
+
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
     config.playback.format = ma_format_f32;
     config.playback.channels = 2;
