@@ -12,10 +12,6 @@
 
 instrument* inst;
 float seconds_per_frame;
-float periods_per_sample;
-float freq;
-float s;
-float timestamp;
 float master_volume = 0.5f;
 
 void dataCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
@@ -43,7 +39,7 @@ void dataCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint
 }
 
 int main() {
-    parseMidiFile("midi/megalo.mid");
+    MidiData* midi_data = parseMidiFile("midi/megalo.mid");
 
     return 0;
 
