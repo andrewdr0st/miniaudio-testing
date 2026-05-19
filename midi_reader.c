@@ -149,6 +149,7 @@ MidiData* parseMidiFile(char* filename) {
     int format, track_count, division;
     FILE* f = fopen(filename, "rb");
     if (!f) {
+        printf("Unable to open file\n");
         return NULL;
     }
     if (checkMagicNumber(f, MTHD_MAGIC)) {

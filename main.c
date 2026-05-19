@@ -38,8 +38,12 @@ void dataCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint
     }
 }
 
-int main() {
-    MidiData* midi_data = parseMidiFile("midi/megalo.mid");
+int main(int argc, char** argv) {
+    if (argc < 2) {
+        printf("Enter a filename\n");
+        return 1;
+    }
+    MidiData* midi_data = parseMidiFile(argv[1]);
 
     return 0;
 
