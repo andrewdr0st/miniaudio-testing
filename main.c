@@ -12,7 +12,9 @@
 
 instrument* inst;
 float seconds_per_frame;
+float ticks_per_frame;
 float master_volume = 0.5f;
+int microseconds_per_quarter_note;
 
 void dataCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
     float* outBuffer = (float*) pOutput;
@@ -43,9 +45,13 @@ int main(int argc, char** argv) {
         printf("Enter a filename\n");
         return 1;
     }
-    MidiData* midi_data = parseMidiFile(argv[1]);
 
-    return 0;
+    MidiData* midi_data = parseMidiFile(argv[1]);
+    if (!midi_data) {
+        return 1;
+    }
+
+    microseconds_per_quarter_note = 500000;
 
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
     config.playback.format = ma_format_f32;
@@ -54,6 +60,12 @@ int main(int argc, char** argv) {
     config.dataCallback = dataCallback;
     
     seconds_per_frame = 1.0f / SAMPLE_RATE;
+
+    float ticks_per_second = midi_data->ticks_per_quater_note / (microseconds_per_quarter_note * 0.000001);
+    ticks_per_frame = ticks_per_second * seconds_per_frame;
+    printf("Ticks per frame: %f\n", ticks_per_frame);
+
+    return 0;
 
     inst = malloc(sizeof(instrument));
     inst->env = createASDREnvelope(0.05f, 0.1f, 0.2f, 0.1f);

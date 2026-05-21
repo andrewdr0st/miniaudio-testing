@@ -57,16 +57,18 @@ int parseVariableLength(FILE* f) {
     return val;
 }
 
-int parseMidiTrack(FILE* f) {
+TrackData parseMidiTrack(FILE* f) {
     int track_length, var_len, event_type;
     Event event_data;
+    EventQueue* event_queue;
+    TrackData track_data;
+    track_data.event_queue = NULL;
     int found_end_of_track = 0;
-    TrackData* track_data = malloc(sizeof(TrackData));
-    track_data->event_queue = createEventQueue(64);
     if (checkMagicNumber(f, MTRK_MAGIC)) {
         printf("Not a valid MIDI file\n");
-        return 1;
+        return track_data;
     }
+    event_queue = createEventQueue(64);
     track_length = (fgetc(f) << 24) + (fgetc(f) << 16) + (fgetc(f) << 8) + fgetc(f);
     while (!found_end_of_track) {
         var_len = parseVariableLength(f);
@@ -92,7 +94,8 @@ int parseMidiTrack(FILE* f) {
             case META_EVENT_TEMPO_SETTING:
                 if (var_len != 3) {
                     printf("Invalid tempo setting\n");
-                    return 1;
+                    destroyEventQueue(event_queue);
+                    return track_data;
                 }
                 int tempo = (fgetc(f) << 16) | (fgetc(f) << 8) | fgetc(f);
                 printf("Tempo: %d\n", tempo);
@@ -109,20 +112,20 @@ int parseMidiTrack(FILE* f) {
                 event_data.offset = 0;
                 event_data.value = var_len;
                 var_len = 0;
-                addEventToQueue(track_data->event_queue, event_data);
+                addEventToQueue(event_queue, event_data);
             }
             switch (event_type & 0xF0) {
             case MIDI_NOTE_OFF:
                 event_data.offset = var_len;
                 event_data.event_type = EVENT_NOTE_OFF;
                 event_data.value = (fgetc(f) << 8) | fgetc(f);
-                addEventToQueue(track_data->event_queue, event_data);
+                addEventToQueue(event_queue, event_data);
                 break;
             case MIDI_NOTE_ON:
                 event_data.offset = var_len;
                 event_data.event_type = EVENT_NOTE_OFF;
                 event_data.value = (fgetc(f) << 8) | fgetc(f);
-                addEventToQueue(track_data->event_queue, event_data);
+                addEventToQueue(event_queue, event_data);
                 break;
             case MIDI_AFTER_TOUCH:
             case MIDI_CONTROL_CHANGE:
@@ -135,14 +138,15 @@ int parseMidiTrack(FILE* f) {
                 break;
             default:
                 printf("Invalid MIDI event\n");
-                return 1;
+                destroyEventQueue(event_queue);
+                return track_data;
             }
         }
     }
-    trimAndLockEventQueue(track_data->event_queue);
-    printf("Event count: %d\n\n", track_data->event_queue->size);
-    destroyEventQueue(track_data->event_queue);
-    return 0;
+    trimAndLockEventQueue(event_queue);
+    printf("Event count: %d\n\n", event_queue->size);
+    track_data.event_queue = event_queue;
+    return track_data;
 }
 
 MidiData* parseMidiFile(char* filename) {
@@ -161,13 +165,21 @@ MidiData* parseMidiFile(char* filename) {
     track_count = (fgetc(f) << 8) | fgetc(f);
     division = (fgetc(f) << 8) | fgetc(f);
     printf("Format: %d, Track Count: %d, Ticks per Qrt Note: %d\n", format, track_count, division);
-    for (int i = 0; i < track_count; i++) {
-        if (parseMidiTrack(f)) {
-            return NULL;
-        }
-    }
     MidiData* midi_data = malloc(sizeof(MidiData));
     midi_data->ticks_per_quater_note = division;
     midi_data->track_count = track_count;
+    midi_data->tracks = malloc(sizeof(TrackData) * track_count);
+    for (int i = 0; i < track_count; i++) {
+        TrackData track_data = parseMidiTrack(f);
+        if (!track_data.event_queue) {
+            for (int j = 0; j < i; j++) {
+                destroyEventQueue(midi_data->tracks[j].event_queue);
+            }
+            free(midi_data->tracks);
+            free(midi_data);
+            return NULL;
+        }
+        midi_data->tracks[i] = track_data;
+    }
     return midi_data;
 }
