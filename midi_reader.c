@@ -123,7 +123,7 @@ TrackData parseMidiTrack(FILE* f) {
                 break;
             case MIDI_NOTE_ON:
                 event_data.offset = var_len;
-                event_data.event_type = EVENT_NOTE_OFF;
+                event_data.event_type = EVENT_NOTE_ON;
                 event_data.value = (fgetc(f) << 8) | fgetc(f);
                 addEventToQueue(event_queue, event_data);
                 break;
