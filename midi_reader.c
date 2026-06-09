@@ -130,10 +130,24 @@ TrackData parseMidiTrack(FILE* f) {
             case MIDI_AFTER_TOUCH:
             case MIDI_CONTROL_CHANGE:
             case MIDI_PITCH_WHEEL:
+                if (var_len > 0) {
+                    event_data.event_type = EVENT_TIME_OFFSET;
+                    event_data.offset = 0;
+                    event_data.value = var_len;
+                    var_len = 0;
+                    addEventToQueue(event_queue, event_data);
+                }
                 fseek(f, 2, SEEK_CUR);
                 break;
             case MIDI_PROGRAM_CHANGE:
             case MIDI_CHANNEL_PRESSURE:
+                if (var_len > 0) {
+                    event_data.event_type = EVENT_TIME_OFFSET;
+                    event_data.offset = 0;
+                    event_data.value = var_len;
+                    var_len = 0;
+                    addEventToQueue(event_queue, event_data);
+                }
                 fseek(f, 1, SEEK_CUR);
                 break;
             default:

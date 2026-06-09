@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <math.h>
 
-Instrument* inst;
+Instrument** instruments;
 float tick_counter = 0.0f;
 float master_volume = 0.5f;
 int microseconds_per_quarter_note;
@@ -23,35 +23,22 @@ void populate_lut() {
 
 void dataCallback(ma_device* device, void* output_buffer, const void* input_buffer, ma_uint32 frame_count) {
     float* outBuffer = (float*) output_buffer;
-    advanceByTicks(inst, ticks_per_frame * frame_count);
 
+    for (int i = 0; i < 2; i++) {
+        updateInstrumentNoteState(instruments[i]);
+        advanceByTicks(instruments[i], ticks_per_frame * frame_count);
+    }
+    
     ma_uint32 i_max = frame_count * 2;
-    for (int i = 0; i < i_max; i += 2) {
-        float val = 0.0f;
-        for (int j = 0; j < 4; j++) {
-            Note* n = &inst->notes[j];
-            if (n->state && n->current_time > 0.0f) {
-                float v = sampleWaveform16(inst->wf, n->wf_index);
-                v *= sampleASDREnvelope(inst->env, n->current_time, n->end_time);
-                val += v;
-                n->wf_index += n->periods_per_sample;
-                if (n->wf_index >= 1.0f) {
-                    n->wf_index -= 1.0f;
-                }
-            }
-            n->current_time += seconds_per_frame;
-        }
-        val *= master_volume;
-        outBuffer[i] = val * inst->pan_l;
-        outBuffer[i + 1] = val * inst->pan_r;
-    }
-
-    for (int i = 0; i < 4; i++) {
-        Note* n = &inst->notes[i];
-        if (n->state && n->current_time - n->end_time > inst->env->release) {
-            n->state = 0;
+    for (int j = 0; j < 2; j++) {
+        for (int i = 0; i < i_max; i += 2) {
+            float val = playInstrument(instruments[j]);
+            val *= master_volume;
+            outBuffer[i] += val * instruments[j]->pan_l;
+            outBuffer[i + 1] += val * instruments[j]->pan_r;
         }
     }
+    
 }
 
 int main(int argc, char** argv) {
@@ -82,8 +69,13 @@ int main(int argc, char** argv) {
     seconds_per_tick = 1.0f / ticks_per_second;
     printf("Ticks per frame: %f\nSeconds per tick: %f\n", ticks_per_frame, seconds_per_tick);
 
-    inst = createInstrument(createSquareWave(), createASDREnvelope(0.05f, 0.1f, 0.2f, 0.1f));
-    setInstrumentQueue(inst, midi_data->tracks[3].event_queue);
+    instruments = malloc(sizeof(Instrument*) * 2);
+
+    instruments[0] = createInstrument(createSquareWave(), createASDREnvelope(0.02f, 0.05f, 0.2f, 0.08f));
+    setInstrumentQueue(instruments[0], midi_data->tracks[3].event_queue);
+
+    instruments[1] = createInstrument(createSawWave(), createASDREnvelope(0.04f, 0.07f, 0.25f, 0.09f));
+    setInstrumentQueue(instruments[1], midi_data->tracks[6].event_queue);
 
     ma_device device;
     if (ma_device_init(NULL, &config, &device) != MA_SUCCESS) {
@@ -93,7 +85,8 @@ int main(int argc, char** argv) {
     ma_device_start(&device);
     getchar();
 
-    destroyInstrument(inst);
+    destroyInstrument(instruments[0]);
+    destroyInstrument(instruments[1]);
     ma_device_uninit(&device);
     return 0;
 }

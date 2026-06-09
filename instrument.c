@@ -1,5 +1,7 @@
 #include "instrument.h"
 #include "audio_globals.h"
+#include "waveform.h"
+#include "envelope.h"
 #include <stdlib.h>
 
 Instrument* createInstrument(waveform_16* wf, asdr_env* env) {
@@ -8,7 +10,7 @@ Instrument* createInstrument(waveform_16* wf, asdr_env* env) {
     inst->env = env;
     inst->pan_l = 0.5f;
     inst->pan_r = 0.5f;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
         inst->notes[i].state = 0;
     }
     return inst;
@@ -36,7 +38,7 @@ void advanceByTicks(Instrument* inst, float ticks) {
             inst->ticks_needed += e.value;
             break;
         case EVENT_NOTE_ON:
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
                 Note* n = &inst->notes[i];
                 if (n->state == 0) {
                     n->state = 1;
@@ -50,11 +52,10 @@ void advanceByTicks(Instrument* inst, float ticks) {
             }
             break;
         case EVENT_NOTE_OFF:
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
                 Note* n = &inst->notes[i];
                 if (n->state == 1 && n->note_id == e.value >> 8) {
                     n->end_time = n->current_time + seconds_per_tick * tick_offset;
-                    break;
                 }
             }
             break;
@@ -65,5 +66,32 @@ void advanceByTicks(Instrument* inst, float ticks) {
         }
         inst->ticks_needed += event_queue->events[event_queue->index].offset;
         tick_offset -= inst->ticks_needed;
+    }
+}
+
+float playInstrument(Instrument* inst) {
+    float val = 0.0f;
+    for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
+        Note* n = &inst->notes[i];
+        if (n->state && n->current_time > 0.0f) {
+            float v = sampleWaveform16(inst->wf, n->wf_index);
+            v *= sampleASDREnvelope(inst->env, n->current_time, n->end_time);
+            val += v;
+            n->wf_index += n->periods_per_sample;
+            if (n->wf_index >= 1.0f) {
+                n->wf_index -= 1.0f;
+            }
+        }
+        n->current_time += seconds_per_frame;
+    }
+    return val;
+}
+
+void updateInstrumentNoteState(Instrument* inst) {
+    for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
+        Note* n = &inst->notes[i];
+        if (n->state && n->current_time - n->end_time > inst->env->release) {
+            n->state = 0;
+        }
     }
 }

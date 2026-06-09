@@ -6,6 +6,8 @@
 #include "events.h"
 #include <stdint.h>
 
+#define INST_NOTE_LIST_SIZE 4
+
 typedef struct {
     uint8_t state;
     uint8_t note_id;
@@ -20,7 +22,7 @@ typedef struct {
     asdr_env* env;
     float pan_l;
     float pan_r;
-    Note notes[4];
+    Note notes[INST_NOTE_LIST_SIZE];
     EventQueue* event_queue;
     float ticks_needed;
 } Instrument;
@@ -29,5 +31,7 @@ Instrument* createInstrument(waveform_16*, asdr_env*);
 void destroyInstrument(Instrument*);
 void setInstrumentQueue(Instrument*, EventQueue*);
 void advanceByTicks(Instrument*, float ticks);
+float playInstrument(Instrument*);
+void updateInstrumentNoteState(Instrument*);
 
 #endif
