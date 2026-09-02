@@ -11,7 +11,7 @@
 #include <math.h>
 
 Instrument** instruments;
-float tick_counter = 0.0f;
+int instrument_count = 4;
 float master_volume = 0.5f;
 int microseconds_per_quarter_note;
 
@@ -24,13 +24,13 @@ void populate_lut() {
 void dataCallback(ma_device* device, void* output_buffer, const void* input_buffer, ma_uint32 frame_count) {
     float* outBuffer = (float*) output_buffer;
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < instrument_count; i++) {
         updateInstrumentNoteState(instruments[i]);
         advanceByTicks(instruments[i], ticks_per_frame * frame_count);
     }
     
     ma_uint32 i_max = frame_count * 2;
-    for (int j = 0; j < 2; j++) {
+    for (int j = 0; j < instrument_count; j++) {
         for (int i = 0; i < i_max; i += 2) {
             float val = playInstrument(instruments[j]);
             val *= master_volume;
@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    microseconds_per_quarter_note = 500000;
+    microseconds_per_quarter_note = 450000;
 
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
     config.playback.format = ma_format_f32;
@@ -69,13 +69,26 @@ int main(int argc, char** argv) {
     seconds_per_tick = 1.0f / ticks_per_second;
     printf("Ticks per frame: %f\nSeconds per tick: %f\n", ticks_per_frame, seconds_per_tick);
 
-    instruments = malloc(sizeof(Instrument*) * 2);
+    instruments = malloc(sizeof(Instrument*) * instrument_count);
 
-    instruments[0] = createInstrument(createSquareWave(), createASDREnvelope(0.02f, 0.05f, 0.2f, 0.08f));
-    setInstrumentQueue(instruments[0], midi_data->tracks[3].event_queue);
+    instruments[0] = createInstrument(createSquareWave(), createASDREnvelope(0.15f, 0.25f, 0.3f, 0.25f));
+    setInstrumentQueue(instruments[0], midi_data->tracks[1].event_queue);
+    setVolume(instruments[0], 0.45f);
+    setPan(instruments[0], 0.45f);
 
-    instruments[1] = createInstrument(createSawWave(), createASDREnvelope(0.04f, 0.07f, 0.25f, 0.09f));
-    setInstrumentQueue(instruments[1], midi_data->tracks[6].event_queue);
+    instruments[1] = createInstrument(createTriangleWave(), createASDREnvelope(0.02f, 0.04f, 0.3f, 0.12f));
+    setInstrumentQueue(instruments[1], midi_data->tracks[2].event_queue);
+    setVolume(instruments[1], 0.95f);
+
+    instruments[2] = createInstrument(createSawWave(), createASDREnvelope(0.1f, 0.15f, 0.35f, 0.2f));
+    setInstrumentQueue(instruments[2], midi_data->tracks[3].event_queue);
+    setVolume(instruments[2], 0.7f);
+    setPan(instruments[2], 0.55f);
+
+    instruments[3] = createInstrument(createSquareWave(), createASDREnvelope(0.15f, 0.25f, 0.3f, 0.25f));
+    setInstrumentQueue(instruments[3], midi_data->tracks[4].event_queue);
+    setVolume(instruments[3], 0.15f);
+    setPan(instruments[3], 0.4f);
 
     ma_device device;
     if (ma_device_init(NULL, &config, &device) != MA_SUCCESS) {

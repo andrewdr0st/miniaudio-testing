@@ -3,13 +3,17 @@
 #include "waveform.h"
 #include "envelope.h"
 #include <stdlib.h>
+#include <stdio.h>
+
+void updateVolumePan(Instrument* inst);
 
 Instrument* createInstrument(waveform_16* wf, asdr_env* env) {
     Instrument* inst = malloc(sizeof(Instrument));
     inst->wf = wf;
     inst->env = env;
-    inst->pan_l = 0.5f;
-    inst->pan_r = 0.5f;
+    inst->volume = 0.5f;
+    inst->pan = 0.5f;
+    updateVolumePan(inst);
     for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
         inst->notes[i].state = 0;
     }
@@ -94,4 +98,19 @@ void updateInstrumentNoteState(Instrument* inst) {
             n->state = 0;
         }
     }
+}
+
+void setVolume(Instrument* inst, float volume) {
+    inst->volume = volume;
+    updateVolumePan(inst);
+}
+
+void setPan(Instrument* inst, float pan) {
+    inst->pan = pan;
+    updateVolumePan(inst);
+}
+
+void updateVolumePan(Instrument* inst) {
+    inst->pan_l = (1.0f - inst->pan) * inst->volume;
+    inst->pan_r = inst->pan * inst->volume;
 }

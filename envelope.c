@@ -12,14 +12,14 @@ asdr_env* createASDREnvelope(float attack, float decay, float sustain, float rel
 }
 
 float sampleASDREnvelope(asdr_env* env, float elapsed_time, float end_time) {
+    float v = env->sustain;
     if (elapsed_time < env->attack) {
-        return LERP(0, 1, elapsed_time / env->attack);
+        v = LERP(0, 1, elapsed_time / env->attack);
     } else if (elapsed_time < env->attack + env->decay) {
-        return LERP(1, env->sustain, (elapsed_time - env->attack) / env->decay);
-    } else if (elapsed_time > end_time) {
-        float val = LERP(env->sustain, 0, (elapsed_time - end_time) / env->release);
-        return MAX(0, val);
-    } else {
-        return env->sustain;
+        v = LERP(1, env->sustain, (elapsed_time - env->attack) / env->decay);
     }
+    if (elapsed_time > end_time) {
+        v = LERP(v, 0, (elapsed_time - end_time) / env->release);
+    }
+    return MAX(0, v);
 }

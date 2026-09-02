@@ -30,3 +30,13 @@ waveform_16* createSawWave() {
     wf->samples[15] = -127;
     return wf;
 }
+
+waveform_16* createTriangleWave() {
+    waveform_16* wf = malloc(sizeof(waveform_16));
+    for (int i = 0; i < 8; i++) {
+        int x = i * 32;
+        wf->samples[i] = 127 - x;
+        wf->samples[i + 8] = -127 + x;
+    }
+    return wf;
+}
