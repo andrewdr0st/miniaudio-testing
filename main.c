@@ -52,6 +52,11 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    for (int i = 0; i < midi_data->track_count; i++) {
+        EventQueue* q = midi_data->tracks[i].event_queue;
+        q->events[q->size - 1].value = longest_track_ticks - q->tick_length;
+    }
+
     microseconds_per_quarter_note = 450000;
 
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
@@ -76,14 +81,14 @@ int main(int argc, char** argv) {
     setVolume(instruments[0], 0.45f);
     setPan(instruments[0], 0.45f);
 
-    instruments[1] = createInstrument(createTriangleWave(), createASDREnvelope(0.02f, 0.04f, 0.3f, 0.12f));
+    instruments[1] = createInstrument(createTriangleWave(), createASDREnvelope(0.02f, 0.06f, 0.35f, 0.2f));
     setInstrumentQueue(instruments[1], midi_data->tracks[2].event_queue);
-    setVolume(instruments[1], 0.95f);
+    setVolume(instruments[1], 1.0f);
 
     instruments[2] = createInstrument(createSawWave(), createASDREnvelope(0.1f, 0.15f, 0.35f, 0.2f));
     setInstrumentQueue(instruments[2], midi_data->tracks[3].event_queue);
     setVolume(instruments[2], 0.7f);
-    setPan(instruments[2], 0.55f);
+    setPan(instruments[2], 0.65f);
 
     instruments[3] = createInstrument(createSquareWave(), createASDREnvelope(0.15f, 0.25f, 0.3f, 0.25f));
     setInstrumentQueue(instruments[3], midi_data->tracks[4].event_queue);
@@ -98,8 +103,6 @@ int main(int argc, char** argv) {
     ma_device_start(&device);
     getchar();
 
-    destroyInstrument(instruments[0]);
-    destroyInstrument(instruments[1]);
     ma_device_uninit(&device);
     return 0;
 }

@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "events.h"
 
+extern int longest_track_ticks;
+
 typedef struct {
     EventQueue* event_queue;
 } TrackData;

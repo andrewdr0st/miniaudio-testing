@@ -18,6 +18,7 @@ typedef struct {
     uint16_t tail;
     uint16_t index;
     uint8_t lock_size;
+    int tick_length;
     Event* events;
 } EventQueue;
 

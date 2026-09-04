@@ -7,6 +7,7 @@ EventQueue* createEventQueue(uint16_t size) {
     queue->tail = 0;
     queue->index = 0;
     queue->lock_size = 0;
+    queue->tick_length = 0;
     queue->events = malloc(sizeof(Event) * size);
     return queue;
 }

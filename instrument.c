@@ -51,6 +51,7 @@ void advanceByTicks(Instrument* inst, float ticks) {
                     n->wf_index = 0.0f;
                     n->current_time = -seconds_per_tick * tick_offset;
                     n->end_time = 10000.0f;
+                    n->volume = (e.value & 0xFF) * 0.003922f;
                     break;
                 }
             }
@@ -78,7 +79,7 @@ float playInstrument(Instrument* inst) {
     for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
         Note* n = &inst->notes[i];
         if (n->state && n->current_time > 0.0f) {
-            float v = sampleWaveform16(inst->wf, n->wf_index);
+            float v = sampleWaveform16(inst->wf, n->wf_index) * n->volume;
             v *= sampleASDREnvelope(inst->env, n->current_time, n->end_time);
             val += v;
             n->wf_index += n->periods_per_sample;

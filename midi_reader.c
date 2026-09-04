@@ -34,6 +34,8 @@ char MTRK_MAGIC[4] = {'M', 'T', 'r', 'k'};
 
 char track_name_buffer[TRACK_NAME_MAX_LEN];
 
+int longest_track_ticks = 0;
+
 int checkMagicNumber(FILE* f, char expected[4]) {
     for (int i = 0; i < 4; i++) {
         if (fgetc(f) != expected[i]) {
@@ -58,7 +60,7 @@ int parseVariableLength(FILE* f) {
 }
 
 TrackData parseMidiTrack(FILE* f) {
-    int track_length, var_len, event_type;
+    int var_len, event_type;
     Event event_data;
     EventQueue* event_queue;
     TrackData track_data;
@@ -68,10 +70,12 @@ TrackData parseMidiTrack(FILE* f) {
         printf("Not a valid MIDI file\n");
         return track_data;
     }
+    int track_length_ticks = 0;
     event_queue = createEventQueue(64);
-    track_length = (fgetc(f) << 24) + (fgetc(f) << 16) + (fgetc(f) << 8) + fgetc(f);
+    fseek(f, 4, SEEK_CUR);
     while (!found_end_of_track) {
         var_len = parseVariableLength(f);
+        track_length_ticks += var_len;
         event_type = fgetc(f);
         if (event_type == 0xFF) {
             event_type = fgetc(f);
@@ -158,6 +162,14 @@ TrackData parseMidiTrack(FILE* f) {
                 return track_data;
             }
         }
+    }
+    event_data.event_type = EVENT_TIME_OFFSET;
+    event_data.offset = 0;
+    event_data.value = 0;
+    addEventToQueue(event_queue, event_data);
+    event_queue->tick_length = track_length_ticks;
+    if (track_length_ticks > longest_track_ticks) {
+        longest_track_ticks = track_length_ticks;
     }
     trimAndLockEventQueue(event_queue);
     printf("Event count: %d\n\n", event_queue->size);

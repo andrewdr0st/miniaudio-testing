@@ -15,6 +15,7 @@ typedef struct {
     float wf_index;
     float current_time;
     float end_time;
+    float volume;
 } Note;
 
 typedef struct {
