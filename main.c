@@ -15,6 +15,10 @@ int instrument_count = 4;
 float master_volume = 0.5f;
 int microseconds_per_quarter_note;
 
+int ticks_per_quarter_note = 0;
+int input_update = 0;
+int new_tempo = 120;
+
 void populate_lut() {
     for (int i = 0; i < 128; i++) {
         note_freq_lut[i] = 440.0f * pow(2, (i - 69) / 12.0f) / SAMPLE_RATE;
@@ -23,6 +27,14 @@ void populate_lut() {
 
 void dataCallback(ma_device* device, void* output_buffer, const void* input_buffer, ma_uint32 frame_count) {
     float* outBuffer = (float*) output_buffer;
+
+    if (input_update) {
+        microseconds_per_quarter_note = 60000000 / new_tempo;
+        float ticks_per_second = ticks_per_quarter_note / (microseconds_per_quarter_note * 0.000001);
+        ticks_per_frame = ticks_per_second * seconds_per_frame;
+        seconds_per_tick = 1.0f / ticks_per_second;
+        input_update = 0;
+    }
 
     for (int i = 0; i < instrument_count; i++) {
         updateInstrumentNoteState(instruments[i]);
@@ -69,7 +81,8 @@ int main(int argc, char** argv) {
 
     populate_lut();
 
-    float ticks_per_second = midi_data->ticks_per_quater_note / (microseconds_per_quarter_note * 0.000001);
+    ticks_per_quarter_note = midi_data->ticks_per_quater_note;
+    float ticks_per_second = ticks_per_quarter_note / (microseconds_per_quarter_note * 0.000001);
     ticks_per_frame = ticks_per_second * seconds_per_frame;
     seconds_per_tick = 1.0f / ticks_per_second;
     printf("Ticks per frame: %f\nSeconds per tick: %f\n", ticks_per_frame, seconds_per_tick);
@@ -101,7 +114,19 @@ int main(int argc, char** argv) {
     }
 
     ma_device_start(&device);
-    getchar();
+    
+    int running = 1;
+    char in_char;
+    int in_val;
+    while (running) {
+        scanf("%c %d", &in_char, &in_val);
+        if (in_char == 'q') {
+            running = 0;
+        } else if (in_char == 't') {
+            new_tempo = in_val;
+            input_update = 1;
+        }
+    }
 
     ma_device_uninit(&device);
     return 0;
