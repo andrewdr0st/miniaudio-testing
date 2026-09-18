@@ -17,6 +17,7 @@ Instrument* createInstrument(waveform_16* wf, asdr_env* env) {
     for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
         inst->notes[i].state = 0;
     }
+    inst->use_filter = 0;
     return inst;
 }
 
@@ -52,6 +53,13 @@ void advanceByTicks(Instrument* inst, float ticks) {
                     n->current_time = -seconds_per_tick * tick_offset;
                     n->end_time = 10000.0f;
                     n->volume = (e.value & 0xFF) * 0.003922f;
+                    FilterState s = {
+                        .x1 = 0,
+                        .x2 = 0,
+                        .y1 = 0,
+                        .y2 = 0
+                    };
+                    n->filter_state = s;
                     break;
                 }
             }
@@ -80,6 +88,9 @@ float playInstrument(Instrument* inst) {
         Note* n = &inst->notes[i];
         if (n->state && n->current_time > 0.0f) {
             float v = sampleWaveform16(inst->wf, n->wf_index) * n->volume;
+            if (inst->use_filter) {
+                v = sample_filter(&inst->filter, &n->filter_state, v);
+            }
             v *= sampleASDREnvelope(inst->env, n->current_time, n->end_time);
             val += v;
             n->wf_index += n->periods_per_sample;

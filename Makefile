@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -O1
 
-SRC = miniaudio.c audio_globals.c main.c envelope.c waveform.c instrument.c midi_reader.c events.c
+SRC = miniaudio.c audio_globals.c main.c envelope.c waveform.c instrument.c midi_reader.c events.c filter.c
 OBJ = $(SRC:.c=.o)
 
 default: $(OBJ)

@@ -3,6 +3,7 @@
 
 #include "waveform.h"
 #include "envelope.h"
+#include "filter.h"
 #include "events.h"
 #include <stdint.h>
 
@@ -16,15 +17,17 @@ typedef struct {
     float current_time;
     float end_time;
     float volume;
+    FilterState filter_state;
 } Note;
 
 typedef struct {
     waveform_16* wf;
     asdr_env* env;
+    Filter filter;
+    char use_filter;
     float volume;
     float pan;
-    float pan_l;
-    float pan_r;
+    float pan_l, pan_r;
     Note notes[INST_NOTE_LIST_SIZE];
     EventQueue* event_queue;
     float ticks_needed;
