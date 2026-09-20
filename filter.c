@@ -1,5 +1,6 @@
 #include "filter.h"
 #include "audio_globals.h"
+#include "math_utils.h"
 #include <math.h>
 
 Filter create_lowpass(float cutoff, float q) {

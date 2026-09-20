@@ -93,19 +93,23 @@ int main(int argc, char** argv) {
     setInstrumentQueue(instruments[0], midi_data->tracks[1].event_queue);
     setVolume(instruments[0], 0.45f);
     setPan(instruments[0], 0.45f); 
+    instruments[0]->wf2 = createQuarterPulse();
+    instruments[0]->enable_flags |= INST_WAVEFORM_MODULATION_FLAG;
 
     instruments[1] = createInstrument(createTriangleWave(), createASDREnvelope(0.02f, 0.06f, 0.35f, 0.2f));
     setInstrumentQueue(instruments[1], midi_data->tracks[2].event_queue);
     setVolume(instruments[1], 1.0f);
     instruments[1]->filter = create_highpass(400, 1.75f);
-    instruments[1]->use_filter = 1;
+    instruments[1]->enable_flags |= INST_USE_FILTER_FLAG;
     
     instruments[2] = createInstrument(createSawWave(), createASDREnvelope(0.1f, 0.15f, 0.35f, 0.2f));
     setInstrumentQueue(instruments[2], midi_data->tracks[3].event_queue);
     setVolume(instruments[2], 0.7f);
     setPan(instruments[2], 0.65f);
     instruments[2]->filter = create_lowpass(3200, 0.75f);
-    instruments[2]->use_filter = 1;
+    instruments[2]->enable_flags |= INST_USE_FILTER_FLAG;
+    instruments[2]->wf2 = createQuarterPulse();
+    instruments[2]->enable_flags |= INST_WAVEFORM_MODULATION_FLAG;
 
     instruments[3] = createInstrument(createSquareWave(), createASDREnvelope(0.15f, 0.25f, 0.3f, 0.25f));
     setInstrumentQueue(instruments[3], midi_data->tracks[4].event_queue);

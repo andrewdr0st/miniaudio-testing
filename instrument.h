@@ -9,6 +9,9 @@
 
 #define INST_NOTE_LIST_SIZE 8
 
+#define INST_WAVEFORM_MODULATION_FLAG 0x1
+#define INST_USE_FILTER_FLAG 0x2
+
 typedef struct {
     uint8_t state;
     uint8_t note_id;
@@ -22,9 +25,10 @@ typedef struct {
 
 typedef struct {
     waveform_16* wf;
+    waveform_16* wf2;
     asdr_env* env;
     Filter filter;
-    char use_filter;
+    uint8_t enable_flags;
     float volume;
     float pan;
     float pan_l, pan_r;

@@ -2,6 +2,7 @@
 #include "audio_globals.h"
 #include "waveform.h"
 #include "envelope.h"
+#include "math_utils.h"
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -17,7 +18,7 @@ Instrument* createInstrument(waveform_16* wf, asdr_env* env) {
     for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
         inst->notes[i].state = 0;
     }
-    inst->use_filter = 0;
+    inst->enable_flags = 0;
     return inst;
 }
 
@@ -87,11 +88,16 @@ float playInstrument(Instrument* inst) {
     for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
         Note* n = &inst->notes[i];
         if (n->state && n->current_time > 0.0f) {
+            float env_sample = sampleASDREnvelope(inst->env, n->current_time, n->end_time);
             float v = sampleWaveform16(inst->wf, n->wf_index) * n->volume;
-            if (inst->use_filter) {
+            if (inst->enable_flags & INST_WAVEFORM_MODULATION_FLAG) {
+                float v2 = sampleWaveform16(inst->wf2, n->wf_index) * n->volume;
+                v = LERP(v, v2, env_sample);
+            }
+            if (inst->enable_flags & INST_USE_FILTER_FLAG) {
                 v = sample_filter(&inst->filter, &n->filter_state, v);
             }
-            v *= sampleASDREnvelope(inst->env, n->current_time, n->end_time);
+            v *= env_sample;
             val += v;
             n->wf_index += n->periods_per_sample;
             if (n->wf_index >= 1.0f) {

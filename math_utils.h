@@ -1,6 +1,7 @@
 #ifndef MATH_UTILS_H
 #define MATH_UTILS_H
 
+#define TWO_PI 6.2831853f
 #define ONE_OVER_127 0.007874f
 
 #define LERP(a, b, t) ((a) + (t) * ((b) - (a)))

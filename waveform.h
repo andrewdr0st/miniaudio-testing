@@ -10,6 +10,7 @@ typedef struct {
 float sampleWaveform16(waveform_16*, float time);
 waveform_16* createSineWave();
 waveform_16* createSquareWave();
+waveform_16* createQuarterPulse();
 waveform_16* createSawWave();
 waveform_16* createTriangleWave();
 

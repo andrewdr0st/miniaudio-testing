@@ -22,6 +22,17 @@ waveform_16* createSquareWave() {
     return wf;
 }
 
+waveform_16* createQuarterPulse() {
+    waveform_16* wf = malloc(sizeof(waveform_16));
+    for (int i = 0; i < 12; i++) {
+        wf->samples[i] = 127;
+    }
+    for (int i = 12; i < 16; i++) {
+        wf->samples[i] = -127;
+    }
+    return wf;
+}
+
 waveform_16* createSawWave() {
     waveform_16* wf = malloc(sizeof(waveform_16));
     for (int i = 0; i < 15; i++) {
