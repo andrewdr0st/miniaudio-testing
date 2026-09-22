@@ -21,7 +21,7 @@ int new_tempo = 120;
 
 void populate_lut() {
     for (int i = 0; i < 128; i++) {
-        note_freq_lut[i] = 440.0f * pow(2, (i - 69) / 12.0f) / SAMPLE_RATE;
+        note_freq_lut[i] = note_freq(i);
     }
 }
 
@@ -49,8 +49,7 @@ void dataCallback(ma_device* device, void* output_buffer, const void* input_buff
             outBuffer[i] += val * instruments[j]->pan_l;
             outBuffer[i + 1] += val * instruments[j]->pan_r;
         }
-    }
-    
+    } 
 }
 
 int main(int argc, char** argv) {
@@ -80,6 +79,7 @@ int main(int argc, char** argv) {
     seconds_per_frame = 1.0f / SAMPLE_RATE;
 
     populate_lut();
+    createSineWave();
 
     ticks_per_quarter_note = midi_data->ticks_per_quater_note;
     float ticks_per_second = ticks_per_quarter_note / (microseconds_per_quarter_note * 0.000001);
@@ -92,7 +92,8 @@ int main(int argc, char** argv) {
     instruments[0] = createInstrument(createSquareWave(), createASDREnvelope(0.15f, 0.25f, 0.3f, 0.25f));
     setInstrumentQueue(instruments[0], midi_data->tracks[1].event_queue);
     setVolume(instruments[0], 0.45f);
-    setPan(instruments[0], 0.45f); 
+    setPan(instruments[0], 0.45f);
+    setVibrato(instruments[0], 0.04f, 5.0f);
     instruments[0]->wf2 = createQuarterPulse();
     instruments[0]->enable_flags |= INST_WAVEFORM_MODULATION_FLAG;
 
@@ -106,16 +107,17 @@ int main(int argc, char** argv) {
     setInstrumentQueue(instruments[2], midi_data->tracks[3].event_queue);
     setVolume(instruments[2], 0.7f);
     setPan(instruments[2], 0.65f);
+    setVibrato(instruments[2], 0.11f, 7.0f);
     instruments[2]->filter = create_lowpass(3200, 0.75f);
     instruments[2]->enable_flags |= INST_USE_FILTER_FLAG;
     instruments[2]->wf2 = createQuarterPulse();
     instruments[2]->enable_flags |= INST_WAVEFORM_MODULATION_FLAG;
 
-    instruments[3] = createInstrument(createSquareWave(), createASDREnvelope(0.15f, 0.25f, 0.3f, 0.25f));
+    instruments[3] = createInstrument(1, createASDREnvelope(0.15f, 0.25f, 0.3f, 0.25f));
     setInstrumentQueue(instruments[3], midi_data->tracks[4].event_queue);
     setVolume(instruments[3], 0.15f);
     setPan(instruments[3], 0.4f);
-
+ 
     ma_device device;
     if (ma_device_init(NULL, &config, &device) != MA_SUCCESS) {
         return 1;

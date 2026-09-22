@@ -4,13 +4,19 @@
 #include "envelope.h"
 #include "math_utils.h"
 #include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
 #include <stdio.h>
 
 void updateVolumePan(Instrument* inst);
 
-Instrument* createInstrument(waveform_16* wf, asdr_env* env) {
+float note_freq(float note_number) {
+    return 440.0f * pow(2, (note_number - 69) / 12.0f) / SAMPLE_RATE;
+}
+
+Instrument* createInstrument(uint16_t waveform_index, asdr_env env) {
     Instrument* inst = malloc(sizeof(Instrument));
-    inst->wf = wf;
+    inst->wf = waveform_index;
     inst->env = env;
     inst->volume = 0.5f;
     inst->pan = 0.5f;
@@ -19,13 +25,10 @@ Instrument* createInstrument(waveform_16* wf, asdr_env* env) {
         inst->notes[i].state = 0;
     }
     inst->enable_flags = 0;
+    inst->vibrato = 0.0f;
+    inst->vibrato_periods_per_sample = 0.0f;
+    inst->vibrato_index = 0.0f;
     return inst;
-}
-
-void destroyInstrument(Instrument* inst) {
-    free(inst->wf);
-    free(inst->env);
-    free(inst);
 }
 
 void setInstrumentQueue(Instrument* inst, EventQueue* queue) {
@@ -55,12 +58,15 @@ void advanceByTicks(Instrument* inst, float ticks) {
                     n->end_time = 10000.0f;
                     n->volume = (e.value & 0xFF) * 0.003922f;
                     FilterState s = {
-                        .x1 = 0,
-                        .x2 = 0,
-                        .y1 = 0,
-                        .y2 = 0
+                        .x1 = 0, .x2 = 0,
+                        .y1 = 0, .y2 = 0
                     };
                     n->filter_state = s;
+                    if (inst->vibrato > 0.0001f) {
+                        n->vibrato = note_freq(n->note_id + inst->vibrato) - n->periods_per_sample;
+                    } else {
+                        n->vibrato = 0.0f;
+                    }
                     break;
                 }
             }
@@ -85,10 +91,11 @@ void advanceByTicks(Instrument* inst, float ticks) {
 
 float playInstrument(Instrument* inst) {
     float val = 0.0f;
+    float vib = sampleWaveform16(0, inst->vibrato_index);
     for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
         Note* n = &inst->notes[i];
         if (n->state && n->current_time > 0.0f) {
-            float env_sample = sampleASDREnvelope(inst->env, n->current_time, n->end_time);
+            float env_sample = sampleASDREnvelope(&inst->env, n->current_time, n->end_time);
             float v = sampleWaveform16(inst->wf, n->wf_index) * n->volume;
             if (inst->enable_flags & INST_WAVEFORM_MODULATION_FLAG) {
                 float v2 = sampleWaveform16(inst->wf2, n->wf_index) * n->volume;
@@ -99,12 +106,16 @@ float playInstrument(Instrument* inst) {
             }
             v *= env_sample;
             val += v;
-            n->wf_index += n->periods_per_sample;
+            n->wf_index += n->periods_per_sample + vib * n->vibrato;
             if (n->wf_index >= 1.0f) {
                 n->wf_index -= 1.0f;
             }
         }
         n->current_time += seconds_per_frame;
+    }
+    inst->vibrato_index += inst->vibrato_periods_per_sample;
+    if (inst->vibrato_index >= 1.0f) {
+        inst->vibrato_index -= 1.0f;
     }
     return val;
 }
@@ -112,7 +123,7 @@ float playInstrument(Instrument* inst) {
 void updateInstrumentNoteState(Instrument* inst) {
     for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
         Note* n = &inst->notes[i];
-        if (n->state && n->current_time - n->end_time > inst->env->release) {
+        if (n->state && n->current_time - n->end_time > inst->env.release) {
             n->state = 0;
         }
     }
@@ -126,6 +137,11 @@ void setVolume(Instrument* inst, float volume) {
 void setPan(Instrument* inst, float pan) {
     inst->pan = pan;
     updateVolumePan(inst);
+}
+
+void setVibrato(Instrument* inst, float strength, float freq) {
+    inst->vibrato = strength;
+    inst->vibrato_periods_per_sample = freq / SAMPLE_RATE;
 }
 
 void updateVolumePan(Instrument* inst) {

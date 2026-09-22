@@ -20,13 +20,14 @@ typedef struct {
     float current_time;
     float end_time;
     float volume;
+    float vibrato;
     FilterState filter_state;
 } Note;
 
 typedef struct {
-    waveform_16* wf;
-    waveform_16* wf2;
-    asdr_env* env;
+    uint16_t wf;
+    uint16_t wf2;
+    asdr_env env;
     Filter filter;
     uint8_t enable_flags;
     float volume;
@@ -35,15 +36,19 @@ typedef struct {
     Note notes[INST_NOTE_LIST_SIZE];
     EventQueue* event_queue;
     float ticks_needed;
+    float vibrato;
+    float vibrato_periods_per_sample;
+    float vibrato_index;
 } Instrument;
 
-Instrument* createInstrument(waveform_16*, asdr_env*);
-void destroyInstrument(Instrument*);
+Instrument* createInstrument(uint16_t waveform_index, asdr_env);
 void setInstrumentQueue(Instrument*, EventQueue*);
 void advanceByTicks(Instrument*, float ticks);
 float playInstrument(Instrument*);
 void updateInstrumentNoteState(Instrument*);
 void setVolume(Instrument*, float volume);
 void setPan(Instrument*, float pan);
+void setVibrato(Instrument*, float strength, float freq);
+float note_freq(float note_number);
 
 #endif

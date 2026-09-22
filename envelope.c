@@ -1,13 +1,12 @@
 #include "envelope.h"
 #include "math_utils.h"
-#include <stdlib.h>
 
-asdr_env* createASDREnvelope(float attack, float decay, float sustain, float release) {
-    asdr_env* env = malloc(sizeof(asdr_env));
-    env->attack = attack;
-    env->decay = decay;
-    env->sustain = sustain;
-    env->release = release;
+asdr_env createASDREnvelope(float attack, float decay, float sustain, float release) {
+    asdr_env env;
+    env.attack = attack;
+    env.decay = decay;
+    env.sustain = sustain;
+    env.release = release;
     return env;
 }
 

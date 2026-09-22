@@ -7,11 +7,11 @@ typedef struct {
     int8_t samples[16];
 } waveform_16;
 
-float sampleWaveform16(waveform_16*, float time);
-waveform_16* createSineWave();
-waveform_16* createSquareWave();
-waveform_16* createQuarterPulse();
-waveform_16* createSawWave();
-waveform_16* createTriangleWave();
+float sampleWaveform16(uint16_t waveform_index, float time);
+uint16_t createSineWave();
+uint16_t createSquareWave();
+uint16_t createQuarterPulse();
+uint16_t createSawWave();
+uint16_t createTriangleWave();
 
 #endif
