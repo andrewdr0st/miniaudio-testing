@@ -5,6 +5,7 @@
 #include "instrument.h"
 #include "math_utils.h"
 #include "midi_reader.h"
+#include "filter.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -12,8 +13,10 @@
 
 Instrument** instruments;
 int instrument_count = 4;
-float master_volume = 0.5f;
+float master_volume = 0.75f;
 int microseconds_per_quarter_note;
+
+Reverb* reverb;
 
 int ticks_per_quarter_note = 0;
 int input_update = 0;
@@ -49,7 +52,8 @@ void dataCallback(ma_device* device, void* output_buffer, const void* input_buff
             outBuffer[i] += val * instruments[j]->pan_l;
             outBuffer[i + 1] += val * instruments[j]->pan_r;
         }
-    } 
+    }
+    process_reverb(reverb, outBuffer, outBuffer, frame_count);
 }
 
 int main(int argc, char** argv) {
@@ -80,6 +84,8 @@ int main(int argc, char** argv) {
 
     populate_lut();
     createSineWave();
+
+    reverb = create_reverb();
 
     ticks_per_quarter_note = midi_data->ticks_per_quater_note;
     float ticks_per_second = ticks_per_quarter_note / (microseconds_per_quarter_note * 0.000001);
