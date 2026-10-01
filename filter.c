@@ -40,88 +40,48 @@ float sample_filter(Filter* f, FilterState* s, float x0) {
     return y0;
 }
 
+#define CHANNEL_1_DELAY 1393
+#define CHANNEL_2_DELAY 1967
+#define CHANNEL_3_DELAY 2881
+#define CHANNEL_4_DELAY 3695
 
-#define STEREO_SPREAD 23
-
-const uint16_t reverb_filter_sizes[COMB_FILTER_COUNT + AP_FILTER_COUNT + 1] = {
-    1215, 1293, 1390, 1476, 1548, 1623, 1695, 1760,
-    245, 605, 480, 371
-};
-uint16_t reverb_filter_bounds[(COMB_FILTER_COUNT + AP_FILTER_COUNT) * 2 + 1];
-uint16_t reverb_buffer_size = 0;
+const uint16_t reverb_delays[REVERB_CHANNEL_COUNT] = {CHANNEL_1_DELAY, CHANNEL_2_DELAY, CHANNEL_3_DELAY, CHANNEL_4_DELAY};
+const uint16_t reverb_boundaries[REVERB_CHANNEL_COUNT] = {CHANNEL_1_DELAY, CHANNEL_1_DELAY + CHANNEL_2_DELAY, CHANNEL_1_DELAY + CHANNEL_2_DELAY + CHANNEL_3_DELAY, CHANNEL_1_DELAY + CHANNEL_2_DELAY + CHANNEL_3_DELAY + CHANNEL_4_DELAY};
+const uint16_t reverb_buffer_size = CHANNEL_1_DELAY + CHANNEL_2_DELAY + CHANNEL_3_DELAY + CHANNEL_4_DELAY;
 
 Reverb* create_reverb() {
-    if (reverb_buffer_size == 0) {
-        reverb_filter_bounds[0] = 0;
-        for (int i = 0; i < COMB_FILTER_COUNT + AP_FILTER_COUNT; i++) {
-            reverb_buffer_size += reverb_filter_sizes[i];
-            reverb_filter_bounds[i * 2 + 1] = reverb_buffer_size;
-            reverb_buffer_size += reverb_filter_sizes[i] + STEREO_SPREAD;
-            reverb_filter_bounds[i * 2 + 2] = reverb_buffer_size;
-        }
-    }
     Reverb* reverb = malloc(sizeof(Reverb));
-    reverb->comb_feedback = 0.84f;
-    reverb->ap_feedback = 0.5f;
-    reverb->damp = 0.2f;
-    reverb->dry = 0.3f;
-    reverb->wet1 = 0.6f;
-    reverb->wet2 = 0.1f;
-    for (int i = 0; i < COMB_FILTER_COUNT * 2; i++) {
-        reverb->fstore[i] = 0;
-    }
-    uint16_t offset = 0;
-    for (int i = 0; i < COMB_FILTER_COUNT + AP_FILTER_COUNT; i++) {
-        reverb->buffer_offsets[i * 2] = offset;
-        offset += reverb_filter_sizes[i];
-        reverb->buffer_offsets[i * 2 + 1] = offset;
-        offset += reverb_filter_sizes[i] + STEREO_SPREAD;
+    reverb->feedback = 0.8f;
+    reverb->buffer_offsets[0] = 0;
+    for (int i = 1; i < REVERB_CHANNEL_COUNT; i++) {
+        reverb->buffer_offsets[i] = reverb_boundaries[i - 1];
     }
     reverb->buffer = calloc(reverb_buffer_size, sizeof(float));
     return reverb;
 }
 
-float process_comb(Reverb* reverb, float in, uint8_t filter_index) {
-    uint16_t index = reverb->buffer_offsets[filter_index];
-    float output = reverb->buffer[index];
-    reverb->fstore[filter_index] = output * (1 - reverb->damp) + reverb->fstore[filter_index] * reverb->damp;
-    reverb->buffer[index] = in + reverb->fstore[filter_index] * reverb->comb_feedback;
-    reverb->buffer_offsets[filter_index]++;
-    if (reverb->buffer_offsets[filter_index] == reverb_filter_bounds[filter_index + 1]) {
-        reverb->buffer_offsets[filter_index] = reverb_filter_bounds[filter_index];
-    }
-    return output;
-}
-
-float process_allpass(Reverb* reverb, float in, uint8_t filter_index) {
-    uint16_t index = reverb->buffer_offsets[filter_index];
-    float buffer_output = reverb->buffer[index];
-    float output = -in + buffer_output;
-    reverb->buffer[index] = in + buffer_output * reverb->ap_feedback;
-    if (reverb->buffer_offsets[filter_index] == reverb_filter_bounds[filter_index + 1]) {
-        reverb->buffer_offsets[filter_index] = reverb_filter_bounds[filter_index];
-    }
-    return output;
-}
-
-void process_reverb(Reverb* reverb, float* in, float* out, int sample_count) {
+void process_reverb(Reverb* reverb, float* samples, int sample_count) {
     for (int sample = 0; sample < sample_count; sample++) {
-        float in_l = in[sample * 2];
-        float in_r = in[sample * 2 + 1];
-        float input = (in_l + in_r) * 0.015f;
-        float out_l = 0;
-        float out_r = 0;
-        for (int i = 0; i < COMB_FILTER_COUNT; i++) {
-            out_l += process_comb(reverb, input, i * 2);
-            out_r += process_comb(reverb, input, i * 2 + 1);
+        float in = samples[sample] * 0.25f;
+        float r0 = reverb->buffer[reverb->buffer_offsets[0]] * reverb->feedback;
+        float r1 = reverb->buffer[reverb->buffer_offsets[1]] * reverb->feedback;
+        float r2 = reverb->buffer[reverb->buffer_offsets[2]] * reverb->feedback;
+        float r3 = reverb->buffer[reverb->buffer_offsets[3]] * reverb->feedback;
+        float m0 = (r0 + r1 + r2 + r3) * 0.5f;
+        float m1 = (r0 - r1 + r2 - r3) * 0.5f;
+        float m2 = (r0 + r1 - r2 - r3) * 0.5f;
+        float m3 = (r0 - r1 - r2 + r3) * 0.5f;
+        reverb->buffer[reverb->buffer_offsets[0]] = m0 + in;
+        reverb->buffer[reverb->buffer_offsets[1]] = m1 + in;
+        reverb->buffer[reverb->buffer_offsets[2]] = m2 + in;
+        reverb->buffer[reverb->buffer_offsets[3]] = m3 + in;
+        samples[sample] += m0 + m1 + m2 + m3;
+        for (int i = 0; i < REVERB_CHANNEL_COUNT; i++) {
+            reverb->buffer_offsets[i]++;
+            if (reverb->buffer_offsets[i] >= reverb_boundaries[i]) {
+                reverb->buffer_offsets[i] -= reverb_delays[i];
+            }
         }
-        for (int i = COMB_FILTER_COUNT; i < COMB_FILTER_COUNT + AP_FILTER_COUNT; i++) {
-            out_l = process_allpass(reverb, out_l, i * 2);
-            out_r = process_allpass(reverb, out_r, i * 2 + 1);
-        }
-        out[sample * 2] = out_l * reverb->wet1 + out_r * reverb->wet2 + in_l * reverb->dry;
-        out[sample * 2 + 1] = out_r * reverb->wet1 + out_l * reverb->wet2 + in_r * reverb->dry;
     }
 }
-
 

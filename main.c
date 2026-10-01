@@ -16,8 +16,6 @@ int instrument_count = 4;
 float master_volume = 0.75f;
 int microseconds_per_quarter_note;
 
-Reverb* reverb;
-
 int ticks_per_quarter_note = 0;
 int input_update = 0;
 int new_tempo = 120;
@@ -42,18 +40,13 @@ void dataCallback(ma_device* device, void* output_buffer, const void* input_buff
     for (int i = 0; i < instrument_count; i++) {
         updateInstrumentNoteState(instruments[i]);
         advanceByTicks(instruments[i], ticks_per_frame * frame_count);
+        playInstrument(instruments[i], outBuffer, frame_count);
     }
-    
-    ma_uint32 i_max = frame_count * 2;
-    for (int j = 0; j < instrument_count; j++) {
-        for (int i = 0; i < i_max; i += 2) {
-            float val = playInstrument(instruments[j]);
-            val *= master_volume;
-            outBuffer[i] += val * instruments[j]->pan_l;
-            outBuffer[i + 1] += val * instruments[j]->pan_r;
-        }
+
+    int i_max = frame_count * 2;
+    for (int i = 0; i < i_max; i++) {
+        outBuffer[i] *= master_volume;
     }
-    process_reverb(reverb, outBuffer, outBuffer, frame_count);
 }
 
 int main(int argc, char** argv) {
@@ -85,8 +78,6 @@ int main(int argc, char** argv) {
     populate_lut();
     createSineWave();
 
-    reverb = create_reverb();
-
     ticks_per_quarter_note = midi_data->ticks_per_quater_note;
     float ticks_per_second = ticks_per_quarter_note / (microseconds_per_quarter_note * 0.000001);
     ticks_per_frame = ticks_per_second * seconds_per_frame;
@@ -108,6 +99,8 @@ int main(int argc, char** argv) {
     setVolume(instruments[1], 1.0f);
     instruments[1]->filter = create_highpass(400, 1.75f);
     instruments[1]->enable_flags |= INST_USE_FILTER_FLAG;
+    instruments[1]->reverb = create_reverb();
+    instruments[1]->enable_flags |= INST_USE_REVERB_FLAG;
     
     instruments[2] = createInstrument(createSawWave(), createASDREnvelope(0.1f, 0.15f, 0.35f, 0.2f));
     setInstrumentQueue(instruments[2], midi_data->tracks[3].event_queue);

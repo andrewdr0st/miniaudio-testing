@@ -11,6 +11,7 @@
 
 #define INST_WAVEFORM_MODULATION_FLAG 0x1
 #define INST_USE_FILTER_FLAG 0x2
+#define INST_USE_REVERB_FLAG 0x4
 
 typedef struct {
     uint8_t state;
@@ -39,12 +40,14 @@ typedef struct {
     float vibrato;
     float vibrato_periods_per_sample;
     float vibrato_index;
+    Reverb* reverb;
+    float sample_buffer[480];
 } Instrument;
 
 Instrument* createInstrument(uint16_t waveform_index, asdr_env);
 void setInstrumentQueue(Instrument*, EventQueue*);
 void advanceByTicks(Instrument*, float ticks);
-float playInstrument(Instrument*);
+void playInstrument(Instrument*, float* samples, int sample_count);
 void updateInstrumentNoteState(Instrument*);
 void setVolume(Instrument*, float volume);
 void setPan(Instrument*, float pan);

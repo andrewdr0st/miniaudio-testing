@@ -89,35 +89,45 @@ void advanceByTicks(Instrument* inst, float ticks) {
     }
 }
 
-float playInstrument(Instrument* inst) {
-    float val = 0.0f;
-    float vib = sampleWaveform16(0, inst->vibrato_index);
-    for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
-        Note* n = &inst->notes[i];
-        if (n->state && n->current_time > 0.0f) {
-            float env_sample = sampleASDREnvelope(&inst->env, n->current_time, n->end_time);
-            float v = sampleWaveform16(inst->wf, n->wf_index) * n->volume;
-            if (inst->enable_flags & INST_WAVEFORM_MODULATION_FLAG) {
-                float v2 = sampleWaveform16(inst->wf2, n->wf_index) * n->volume;
-                v = LERP(v, v2, env_sample);
+void playInstrument(Instrument* inst, float* samples, int sample_count) {
+    for (int s = 0; s < sample_count; s++) {
+        float val = 0.0f;
+        float vib = sampleWaveform16(0, inst->vibrato_index);
+        for (int i = 0; i < INST_NOTE_LIST_SIZE; i++) {
+            Note* n = &inst->notes[i];
+            if (n->state && n->current_time > 0.0f) {
+                float env_sample = sampleASDREnvelope(&inst->env, n->current_time, n->end_time);
+                float v = sampleWaveform16(inst->wf, n->wf_index) * n->volume;
+                if (inst->enable_flags & INST_WAVEFORM_MODULATION_FLAG) {
+                    float v2 = sampleWaveform16(inst->wf2, n->wf_index) * n->volume;
+                    v = LERP(v, v2, env_sample);
+                }
+                if (inst->enable_flags & INST_USE_FILTER_FLAG) {
+                    v = sample_filter(&inst->filter, &n->filter_state, v);
+                }
+                v *= env_sample;
+                val += v;
+                n->wf_index += n->periods_per_sample + vib * n->vibrato;
+                if (n->wf_index >= 1.0f) {
+                    n->wf_index -= 1.0f;
+                }
             }
-            if (inst->enable_flags & INST_USE_FILTER_FLAG) {
-                v = sample_filter(&inst->filter, &n->filter_state, v);
-            }
-            v *= env_sample;
-            val += v;
-            n->wf_index += n->periods_per_sample + vib * n->vibrato;
-            if (n->wf_index >= 1.0f) {
-                n->wf_index -= 1.0f;
-            }
+            n->current_time += seconds_per_frame;
         }
-        n->current_time += seconds_per_frame;
+        inst->vibrato_index += inst->vibrato_periods_per_sample;
+        if (inst->vibrato_index >= 1.0f) {
+            inst->vibrato_index -= 1.0f;
+        }
+        inst->sample_buffer[s] = val;
     }
-    inst->vibrato_index += inst->vibrato_periods_per_sample;
-    if (inst->vibrato_index >= 1.0f) {
-        inst->vibrato_index -= 1.0f;
+    if (inst->enable_flags & INST_USE_REVERB_FLAG) {
+        process_reverb(inst->reverb, inst->sample_buffer, sample_count);
     }
-    return val;
+    for (int i = 0; i < sample_count; i++) {
+        float s = inst->sample_buffer[i];
+        samples[i * 2] += s * inst->pan_l;
+        samples[i * 2 + 1] += s * inst->pan_r;
+    }
 }
 
 void updateInstrumentNoteState(Instrument* inst) {
