@@ -100,6 +100,7 @@ int main(int argc, char** argv) {
     instruments[1]->filter = create_highpass(400, 1.75f);
     instruments[1]->enable_flags |= INST_USE_FILTER_FLAG;
     instruments[1]->reverb = create_reverb();
+    instruments[1]->reverb->wet = 0.75f;
     instruments[1]->enable_flags |= INST_USE_REVERB_FLAG;
     
     instruments[2] = createInstrument(createSawWave(), createASDREnvelope(0.1f, 0.15f, 0.35f, 0.2f));
@@ -111,6 +112,9 @@ int main(int argc, char** argv) {
     instruments[2]->enable_flags |= INST_USE_FILTER_FLAG;
     instruments[2]->wf2 = createQuarterPulse();
     instruments[2]->enable_flags |= INST_WAVEFORM_MODULATION_FLAG;
+    instruments[2]->enable_flags |= INST_USE_REVERB_FLAG;
+    instruments[2]->reverb = create_reverb();
+    instruments[2]->reverb->feedback = 0.65f;
 
     instruments[3] = createInstrument(1, createASDREnvelope(0.15f, 0.25f, 0.3f, 0.25f));
     setInstrumentQueue(instruments[3], midi_data->tracks[4].event_queue);

@@ -23,6 +23,8 @@ typedef struct {
     float feedback;
     float dry;
     float wet;
+    uint16_t diffuse_buffer_offsets[REVERB_CHANNEL_COUNT];
+    float* diffuse_buffer;
     uint16_t buffer_offsets[REVERB_CHANNEL_COUNT];
     float* buffer;
 } Reverb;
